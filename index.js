@@ -1,3 +1,5 @@
+var _ = require("underscore")
+var moment = require("moment")
 var request = require('request')
 var cheerio = require('cheerio');
 
@@ -48,21 +50,49 @@ request('https://wikimania2017.wikimedia.org/wiki/Programme/Friday', function(er
 
     // Getting list of events and their timings
     var eventDataHTML = $('.wikitable.schedule.schedule-main.schedule-11 tbody tr td')
-    var eventDataArray = []
+    var events = []
     eventDataHTML.each(function(i, elem){
       for(var x in elem.children){
         var eventData = elem.children[x].data
         if(eventData && eventData != '' && eventData != '\n'){
           eventData = eventData.trim()
           if(x == 0){
-            eventDataArray.push(eventData)
+            var startTime = "";
+            var eventLocation;
+            var parentsChildNodes = elem.parent.childNodes
+            for(var z in parentsChildNodes){
+              if(parentsChildNodes[z].children){
+                if(parentsChildNodes[z].children[0]){
+                  startTime = moment(parentsChildNodes[z].children[0].data, "HH:mm")
+                }
+              }
+            }
+            var parentsTDElements = parentsChildNodes.filter(function(item, index, self){
+              return item.name == "td"
+            })
+            if(elem.attribs.colspan == venueRoomsArray.length){
+              eventLocation = "Global" 
+            }else{
+              var currentTDIndex;
+              parentsTDElements.map(function(val, index){
+                if(_.isEqual(val, elem)){
+                  currentTDIndex = index;
+                }
+              })
+              eventLocation = venueRoomsArray[currentTDIndex];
+            }
+            events.push({
+              "startTime": startTime.format("HH:mm"),
+              "endTime": startTime.add(elem.attribs.rowspan * 15, "minutes").format("HH:mm"),
+              "event": eventData,
+              "eventLocation": eventLocation
+            })
           }else{
-            eventDataArray[eventDataArray.length - 1] += ' ' + (elem.children[x].data.trim())
+            events[events.length - 1].event += ' ' + (eventData)
           }
         }
       }
     })
-    console.log(eventDataArray)
-    var events = []
+    console.log(events)
   }
 })
